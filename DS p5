@@ -1,0 +1,289 @@
+// Kyle Fraser
+// p5.cpp
+// 5/30/19
+
+// Purpose: Creates a program which takes in the book Ulysses by
+// James Joyce as a .txt file and processes the words so that all
+// capitals are turned to lowercase, punctuation is removed from
+// the beginning and end of the word, all words with numbers are
+// removed, and numbers less than 6 are removed. These words are then
+// hashed and inserted into a hash table. Prints relevent stats and
+// allows the user to search for the number of occurences of a word.
+
+// Process: Read a .txt file into the program. Then process, hash, and
+// insert each word one by one. Continue to count relevent stats
+// print the stats and then prompt the user to
+// enter a word. Print the occurences of this word. Allow user to enter
+// words until they wish to quit the program.
+
+// Input: Press enter to quit program if file failed. Press enter
+// to print hash table stats, prompt to enter a word. enter a word.
+// prompt to enter another word.
+
+// Output: Welcome message, prompt to print stats, hashtable stats,
+// prompt to search for a word, number of occurences of inputted word,
+// prompt to enter another word, and a goodbye message.
+
+#include <cctype>
+#include <fstream>
+#include <iomanip>
+#include <string>
+#include <cstdlib>
+#include <iostream>
+using namespace std;
+
+struct HashNode
+{
+  string data;
+  HashNode* next;
+  int count1 = 0;
+};
+
+string preProcess(string word, int length);
+// pre: Requires a string and the length of the string as
+// parameters.
+
+// post: The string is processed. Strings with numbers or with length
+// less than 5 are removed. Punctuation at the beginning and end of
+// strings is removed. All words are made lowercase.
+
+int hashFunc(const string& word, int length);
+// pre: Requires a constant reference string variable and
+// the length of the string as parameters.
+
+// post: The string is given a corresponding hash key.
+
+void store(int key, HashNode* table[], string word,
+           int& coll, int& unique);
+// pre: Requires a hash key, the array of lists, a string,
+// a reference variable for number of collisions, and a reference
+// variable for the number of unique words as parameters.
+
+// post: A string is inserted into the table using the key as
+// a location.
+
+int wordSearch(string word, HashNode* table[]);
+// pre: Requires a string and the array of lists as parameters.
+
+// post: Returns number of times the string occured in the table.
+
+
+const int TABLE_SIZE = 115000;
+const char YES = 'y'; 
+const string FILENAME = "ulyss12.txt"; 
+
+int main()
+{
+  int coll = 0; 
+  int wordCount = 0; 
+  int unique = 0; 
+  int hashNum; 
+  int occurrences; 
+  int length;
+  string word; 
+  string searchedWord; 
+  ifstream inFile; 
+  HashNode* table[TABLE_SIZE]; 
+  char ans; 
+
+  for(int i = 0; i < TABLE_SIZE; i++){
+    table[i] = nullptr;
+  }
+ 
+  inFile.open(FILENAME);
+  if(inFile.fail()){
+    cout << "File problem...exiting program...press enter...";
+    cin.get();
+    return 0;
+  }
+
+  while(inFile >> word){
+    length = word.length();
+    word =  preProcess(word, length);
+    if(!word.empty()){
+      
+      wordCount++;
+      hashNum = hashFunc(word, length);
+      store(hashNum, table, word, coll, unique);
+    }
+
+  }
+
+  cout << endl << endl;
+  cout << "Welcome! several Words from the novel Ulysses" << endl;
+  cout << "by James Joyce have been inserted into a hash table.";
+  cout << endl << endl << endl;
+  
+  cout << "Press enter to print the stats generated...";
+  cin.get();
+
+  
+  float loadFactor = (float)wordCount/TABLE_SIZE;
+
+  cout << endl << endl;
+  cout << "Load Factor: " << loadFactor << endl;
+  cout << "Total words: " << wordCount << endl;
+  cout << "Total collisions: " << coll << endl;
+  cout << "Total unique words: " << unique << endl;
+  cout << endl << endl;
+
+  cout << "Search a word to find the number of occurrences(y/n)? ";
+  cin >> ans;
+  while(tolower(ans) == YES){
+    
+    cout << endl << endl;
+    cout << "Enter a word: ";  
+    cin >> searchedWord;
+    cout << endl << endl;
+    
+  
+    occurrences = wordSearch(searchedWord, table);
+    cout << searchedWord << " occurs " << occurrences << " times.";
+    cout << endl << endl << endl;
+
+    cout << "Again(y/n)? ";
+    cin >> ans;
+  }
+
+
+  cout << endl << endl;
+  cout << "Goodbye!";
+  cout << endl << endl << endl;
+
+
+  HashNode* delptr;
+  
+  for(int i = 0; i < TABLE_SIZE; i++){
+    while(table[i] != nullptr){
+      delptr = table[i];
+      table[i] = table[i]->next;
+      delete delptr;
+    }
+
+    table[i] = nullptr;
+
+  }
+  
+  
+  return 0;
+
+}
+
+
+string preProcess(string word, int length)
+{
+
+  string temp;
+  for(int i = 0; i < length; i++){
+    word[i] = tolower(word[i]);
+  }
+
+  for(int i = 0; i < length; i++){
+    if(isdigit(word[i])){
+      word.clear();
+    }
+  }
+
+  while(ispunct(word[0])){
+    word.erase(0);
+  }
+
+  while(ispunct(word[word.length() - 1])){
+    word.erase(word.length() - 1);
+  }
+  length = word.length();
+
+  if(length > 5){
+    return word;
+  }
+  else{
+    return temp;
+  }
+ 
+  
+}
+
+
+// Credit for hash function given to
+// https://stackoverflow.com/questions/8317508/hash-function-for
+// -a-string   
+int hashFunc(const string& word, int length)
+{
+  unsigned int hash = 0;
+  
+  for(int i = 0; i < length; i++){
+    hash = hash * 37 + word[i];
+  }
+
+  return hash % TABLE_SIZE;
+
+}
+
+void store(int hashNum, HashNode* table[], string word,
+           int& coll, int& unique)
+{
+  
+
+  if(table[hashNum] == nullptr){
+    HashNode* ptr1 = new HashNode;
+    ptr1->data = word; 
+    ptr1->next = nullptr; 
+    ptr1->count1++;
+    table[hashNum] = ptr1;
+    unique++; 
+  }
+
+  else{
+    
+    HashNode* ptr2 = table[hashNum];  
+    while(ptr2->next != nullptr && ptr2->data != word){ 
+      ptr2 = ptr2->next;
+   
+    }
+
+    if(ptr2->data == word){
+      ptr2->count1++;
+    }
+    else{
+      HashNode* ptr3 = new HashNode;
+      ptr3->data = word;
+      ptr3->next = nullptr;
+      ptr3->count1++;
+      ptr2->next = ptr3;
+      unique++;
+      coll++;
+    }
+
+  }
+
+
+}
+
+int wordSearch(string word, HashNode* table[])
+{
+  if(word.length() < 6){
+    return 0;
+  }
+  int num;
+  
+  int key = hashFunc(word, word.length());
+  HashNode* temp = table[key];
+  
+  while(temp->next != nullptr && temp->data != word){
+    temp = temp->next;
+  }
+
+  if(temp->data == word){
+    num = temp->count1;
+  }
+
+  else if(temp->data != word){
+    num = 0;
+  }
+  
+  return num;
+
+}
+
+
+  
